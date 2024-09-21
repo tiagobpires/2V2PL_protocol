@@ -10,10 +10,10 @@
 
 #### **2. Gerenciamento de Bloqueios com Suporte a Múltipla Granulosidade**
 
-- [ ] Criar uma classe `Lock` que gerencia diferentes tipos de bloqueios: **shared**, **exclusive**, e **update**.
-- [ ] Implementar um **Lock Manager** que gerencia os bloqueios com múltipla granulosidade (por exemplo, bloqueios em nível de registro, página, ou tabela).
+- [ X] Criar uma classe `Lock` que gerencia diferentes tipos de bloqueios: **Escrita**, **leitura**, ,**intenção de leitura, escrita e update** **update**.
+- [X ] Implementar um **Lock Manager** que gerencia os bloqueios com múltipla granulosidade (por exemplo, bloqueios em nível de registro, página, ou tabela).
 - [ ] Implementar lógica para promover bloqueios do tipo **shared** para **update** e, em seguida, para **exclusive**.
-- [ ] Garantir que o Lock Manager evite conflitos de bloqueio entre transações concorrentes.
+- [X ] Garantir que o Lock Manager evite conflitos de bloqueio entre transações concorrentes.
 
 #### **3. Protocolo 2V2PL**
 

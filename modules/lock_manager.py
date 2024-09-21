@@ -42,7 +42,7 @@ class LockManager:
             return False
 
         # Lidar com Intention Locks e bloqueios regulares
-        if lock_type in [LockType.IRL, LockType.IWL, LockType.IUL, LockType.S, LockType.W, LockType.U]:
+        if lock_type in [LockType.IRL, LockType.IWL, LockType.IUL, LockType.R, LockType.W, LockType.U]:
             if lock_type == LockType.R:
                 if not (current_locks[LockType.W] or current_locks[LockType.U] or current_locks[LockType.IUL] or current_locks[LockType.IWL]):
                     current_locks[LockType.R].add(transaction)
