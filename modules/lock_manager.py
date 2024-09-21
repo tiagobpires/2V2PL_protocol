@@ -44,6 +44,7 @@ class LockManager:
         if not any(current_locks.values()):
             current_locks[lock_type].add(transaction)
             transaction.locks_held[node.name] = lock_type
+            node.add_lock(transaction, lock_type)
 
             # Backpropagate intention locks using the granularity graph
             self.granularity_graph.backpropagate_intention_locks(
@@ -62,6 +63,7 @@ class LockManager:
 
             current_locks[LockType.CL].add(transaction)
             transaction.locks_held[node.name] = LockType.CL
+            node.add_lock(transaction, lock_type)
 
             # Backpropagate intention certify locks
             self.granularity_graph.backpropagate_intention_locks(
@@ -85,6 +87,7 @@ class LockManager:
             if self._can_grant_lock(lock_type, current_locks):
                 current_locks[lock_type].add(transaction)
                 transaction.locks_held[node.name] = lock_type
+                node.add_lock(transaction, lock_type)
 
                 # Backpropagate intention locks using the granularity graph
                 self.granularity_graph.backpropagate_intention_locks(

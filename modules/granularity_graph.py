@@ -57,7 +57,7 @@ class GranularityGraph:
         # Add the intention lock to the parent
         if not node.is_root:
             # Recursive call to propagate to higher levels
-            self.backpropagate_intention_locks(transaction, node.parent, intention_lock)
+            self.backpropagate_intention_locks(transaction, node.parent, lock_type)
 
     def front_propagate_locks(self, transaction, node, lock_type):
         """
