@@ -4,9 +4,9 @@
 
 #### **1. Gerenciamento de Transações e Operações**
 
-- [ ] Criar uma classe `Transaction` para representar uma transação.
-- [ ] Definir as operações possíveis para uma transação: leitura (read), escrita (write), e atualização (update).
-- [ ] Implementar um gerenciador de transações que controla o estado de cada transação (ativa, bloqueada, abortada, ou comprometida).
+- [x] Criar uma classe `Transaction` para representar uma transação.
+- [x] Definir as operações possíveis para uma transação: leitura (read), escrita (write), e atualização (update).
+- [x] Implementar um gerenciador de transações que controla o estado de cada transação (ativa, bloqueada, abortada, ou comprometida).
 
 #### **2. Gerenciamento de Bloqueios com Suporte a Múltipla Granulosidade**
 
