@@ -1,4 +1,5 @@
-from modules.lock import LockType
+from modules.lock import LockType, Lock
+from modules.transaction import Transaction
 
 
 class LockManager:
@@ -6,35 +7,51 @@ class LockManager:
         """
         Initializes the lock manager to track locks on resources with multiple levels of granularity.
         """
-        # Dicionário que mapeia recursos para seus bloqueios (com granularidade múltipla)
+
+        # {resource: {lock_type: {transactions}}}
         self.locks = {}
 
     def _initialize_resource(self, resource):
-        """Helper function to initialize the lock entry for a resource."""
+        """
+        Helper function to initialize the lock entry for a resource.
+        """
+
         if resource not in self.locks:
             self.locks[resource] = {
                 LockType.IRL: set(),
                 LockType.IWL: set(),
                 LockType.IUL: set(),
-                LockType.R: set(),
-                LockType.W: set(),
-                LockType.U: set(),
+                LockType.ICL: set(),
+                LockType.RL: set(),
+                LockType.WL: set(),
+                LockType.UL: set(),
                 LockType.CL: set(),
             }
 
-    def request_lock(self, transaction, resource, lock_type: LockType):
+    def request_lock(self, transaction: Transaction, resource: str, operation):
         """
-        Requests a lock of the given type (IRL, IWL, IUL, R, W, U, CL) for the resource.
+        Requests a lock for the resource.
         """
+
+        lock_type = Lock.get_lock_type_based_on_operation(operation)
+
         self._initialize_resource(resource)
         current_locks = self.locks[resource]
+
+        if not any(current_locks.values()):
+            current_locks[lock_type].add(transaction)
+            transaction.locks_held[resource] = lock_type
+
+            return True
 
         # Certify Lock (CL) só pode ser garantido se não houver outros bloqueios no recurso
         if lock_type == LockType.CL:
             if any(current_locks.values()):
                 return False  # Não pode adquirir CL se há qualquer outro bloqueio
+
             current_locks[LockType.CL].add(transaction)
             transaction.locks_held[resource] = LockType.CL
+
             return True
 
         # Se já há um Certify Lock (CL), nenhum outro bloqueio pode ser garantido
@@ -42,34 +59,62 @@ class LockManager:
             return False
 
         # Lidar com Intention Locks e bloqueios regulares
-        if lock_type in [LockType.IRL, LockType.IWL, LockType.IUL, LockType.R, LockType.W, LockType.U]:
-            if lock_type == LockType.R:
-                if not (current_locks[LockType.W] or current_locks[LockType.U] or current_locks[LockType.IUL] or current_locks[LockType.IWL]):
-                    current_locks[LockType.R].add(transaction)
-                    transaction.locks_held[resource] = LockType.R
+        if lock_type in [
+            LockType.IRL,
+            LockType.IWL,
+            LockType.IUL,
+            LockType.RL,
+            LockType.WL,
+            LockType.UL,
+        ]:
+            if lock_type == LockType.RL:
+                if not (
+                    current_locks[LockType.WL]
+                    or current_locks[LockType.UL]
+                    or current_locks[LockType.IUL]
+                    or current_locks[LockType.IWL]
+                ):
+                    current_locks[LockType.RL].add(transaction)
+                    transaction.locks_held[resource] = LockType.RL
                     return True
-            elif lock_type == LockType.W:
-                if not any(current_locks.values()):  # Nenhum outro bloqueio permitido para W
-                    current_locks[LockType.W].add(transaction)
-                    transaction.locks_held[resource] = LockType.W
+
+            elif lock_type == LockType.WL:
+                if not any(
+                    current_locks.values()
+                ):  # Nenhum outro bloqueio permitido para W
+                    current_locks[LockType.WL].add(transaction)
+                    transaction.locks_held[resource] = LockType.WL
                     return True
-            elif lock_type == LockType.U:
-                if not current_locks[LockType.W] and not current_locks[LockType.U]:
-                    current_locks[LockType.U].add(transaction)
-                    transaction.locks_held[resource] = LockType.U
+            elif lock_type == LockType.UL:
+                if not current_locks[LockType.WL] and not current_locks[LockType.UL]:
+                    current_locks[LockType.UL].add(transaction)
+                    transaction.locks_held[resource] = LockType.UL
                     return True
             elif lock_type == LockType.IRL:
-                if not (current_locks[LockType.IWL] or current_locks[LockType.IUL] or current_locks[LockType.W]):
+                if not (
+                    current_locks[LockType.IWL]
+                    or current_locks[LockType.IUL]
+                    or current_locks[LockType.WL]
+                ):
                     current_locks[LockType.IRL].add(transaction)
                     transaction.locks_held[resource] = LockType.IRL
                     return True
             elif lock_type == LockType.IWL:
-                if not (current_locks[LockType.IRL] or current_locks[LockType.IUL] or current_locks[LockType.R] or current_locks[LockType.U]):
+                if not (
+                    current_locks[LockType.IRL]
+                    or current_locks[LockType.IUL]
+                    or current_locks[LockType.RL]
+                    or current_locks[LockType.UL]
+                ):
                     current_locks[LockType.IWL].add(transaction)
                     transaction.locks_held[resource] = LockType.IWL
                     return True
             elif lock_type == LockType.IUL:
-                if not (current_locks[LockType.W] or current_locks[LockType.R] or current_locks[LockType.IRL]):
+                if not (
+                    current_locks[LockType.WL]
+                    or current_locks[LockType.RL]
+                    or current_locks[LockType.IRL]
+                ):
                     current_locks[LockType.IUL].add(transaction)
                     transaction.locks_held[resource] = LockType.IUL
                     return True
