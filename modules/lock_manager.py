@@ -145,5 +145,34 @@ class LockManager:
         for resource in list(transaction.locks_held.keys()):
             self.release_lock(transaction, resource)
 
+    def promote_lock(
+        self, transaction: "Transaction", resource: str, new_lock_type: LockType
+    ):
+        """
+        Promotes the current lock held by the transaction to a more restrictive lock, including handling Intention Locks and Certify Lock.
+        """
+
+        self._initialize_resource(resource)
+        current_locks = self.locks[resource]
+
+        if resource not in transaction.locks_held:
+            raise ValueError("Transaction does not hold a lock on this resource.")
+
+        current_lock_type = transaction.locks_held[resource]
+
+        Lock.validate_promotion(current_lock_type, new_lock_type)
+
+        if not Lock.check_conflicting_locks(
+            current_locks, current_lock_type, new_lock_type
+        ):
+            return False  # Cannot promote due to conflicting locks
+
+        # Remove the current lock and grant the new promoted lock
+        current_locks[current_lock_type].discard(transaction)
+        current_locks[new_lock_type].add(transaction)
+        transaction.locks_held[resource] = new_lock_type
+
+        return True
+
     def __repr__(self):
         return f"LockManager({self.locks})"
