@@ -28,7 +28,7 @@ class Transaction:
         # Request the lock needed for this operation
         if not self.lock_manager.request_lock(operation):
             # Block the transaction if lock cannot be granted
-            self.block_transaction(operation)
+            self.block_transaction(resource)
 
             print(
                 f"Transaction {self.transaction_id} is blocked, waiting for {resource}."
@@ -38,13 +38,13 @@ class Transaction:
                 f"Transaction {self.transaction_id} obtained {operation_type.name} lock on {resource}."
             )
 
-    def block_transaction(self, operation: Operation):
+    def block_transaction(self, resource: str):
         """
         Blocks the transaction and sets the resource it is waiting for.
         """
 
         self.state = "blocked"
-        self.waiting_for = operation
+        self.waiting_for = resource
 
     def unblock_transaction(self):
         """
