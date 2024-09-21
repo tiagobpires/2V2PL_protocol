@@ -38,7 +38,7 @@ class Transaction:
                 f"Transaction {self.transaction_id} obtained {operation_type.name} lock on {resource}."
             )
 
-    def block_transaction(self, resource:str):
+    def block_transaction(self, resource: str):
         """
         Blocks the transaction and sets the resource it is waiting for.
         """
