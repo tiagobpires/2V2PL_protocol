@@ -33,10 +33,6 @@ def main():
         lock_manager.request_lock(t1, table_node, OperationType.READ) == True
     ), "Transaction 1 should acquire Read Lock on Table1"
 
-    granularity_graph.print_graph()
-
-    return
-
     # # Verify front propagation: Tuple1 should also have the Read Lock (RL)
     # print(
     #     f"Transaction {t1.transaction_id} should have a Read Lock on Tuple1 (front propagation)"
@@ -78,6 +74,7 @@ def main():
     # Transaction 1 commits and releases locks
     print(f"Transaction {t1.transaction_id} commits and releases all locks")
     t1.commit_transaction()
+
     # Verify that the locks on Tuple1 and Table1 are released
     print("Verifying that locks are released after commit...")
     assert (

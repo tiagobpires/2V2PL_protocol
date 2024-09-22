@@ -9,7 +9,6 @@ class LockManager:
         Initializes the lock manager to track locks on resources with multiple levels of granularity.
         """
 
-        self.locks = {}
         self.granularity_graph = granularity_graph
 
     def _initialize_resource(self, resource: str):
@@ -39,16 +38,12 @@ class LockManager:
         """
 
         lock_type = Lock.get_lock_type_based_on_operation(operation)
-        self._initialize_resource(node.name)
-        current_locks = self.locks[node.name]
+        current_locks = node.locks
 
         if not any(current_locks.values()):
             current_locks[lock_type].add(transaction)
-            transaction.locks_held[node.name] = lock_type
+            transaction.locks_held[node] = lock_type
             node.add_lock(transaction, lock_type)
-
-            for lock, transactions in current_locks.items():
-                print(lock, transactions)
 
             return True
 
@@ -58,7 +53,7 @@ class LockManager:
                 return False  # Não pode adquirir CL se há qualquer outro bloqueio
 
             current_locks[LockType.CL].add(transaction)
-            transaction.locks_held[node.name] = LockType.CL
+            transaction.locks_held[node] = LockType.CL
             node.add_lock(transaction, lock_type)
 
             return True
@@ -74,7 +69,7 @@ class LockManager:
         ]:
             if self._can_grant_lock(lock_type, current_locks):
                 current_locks[lock_type].add(transaction)
-                transaction.locks_held[node.name] = lock_type
+                transaction.locks_held[node] = lock_type
                 node.add_lock(transaction, lock_type)
                 return True
 
@@ -110,30 +105,31 @@ class LockManager:
 
     def release_lock(self, transaction, node: GranularityGraphNode, lock_type=None):
         """
-        Releases a specific lock type or all locks held by the transaction on the resource.
+        Releases a specific lock type or all locks held by the transaction on the node.
         """
 
-        resource = node.name
-        if resource in transaction.locks_held:
-            current_locks = self.locks[resource]
+        if node in transaction.locks_held:
+            current_locks = node.locks
             if lock_type:
                 # Release the specific lock type if provided
-                if lock_type in transaction.locks_held[resource]:
+                if lock_type in transaction.locks_held[node]:
                     current_locks[lock_type].discard(transaction)
-                    del transaction.locks_held[resource]
+                    del transaction.locks_held[node]
+                    node.remove_lock(lock_type)
             else:
                 # Release all locks if no lock type is provided
-                for lt in current_locks:
-                    current_locks[lt].discard(transaction)
-                del transaction.locks_held[resource]
+                for lock_type in current_locks:
+                    current_locks[lock_type].discard(transaction)
+                    node.remove_lock(transaction, lock_type)
+                del transaction.locks_held[node]
 
     def release_all_locks(self, transaction):
         """
-        Releases all locks held by a given transaction across all resources.
+        Releases all locks held by a given transaction across all nodes.
         """
 
-        for resource in list(transaction.locks_held.keys()):
-            self.release_lock(transaction, resource)
+        for node in list(transaction.locks_held.keys()):
+            self.release_lock(transaction, node)
 
     def promote_lock(
         self,
@@ -145,13 +141,12 @@ class LockManager:
         Promotes the current lock held by the transaction to a more restrictive lock
         """
 
-        self._initialize_resource(node.name)
-        current_locks = self.locks[node.name]
+        current_locks = node.locks
 
-        if node.name not in transaction.locks_held:
+        if node not in transaction.locks_held:
             raise ValueError("Transaction does not hold a lock on this resource.")
 
-        current_lock_type = transaction.locks_held[node.name]
+        current_lock_type = transaction.locks_held[node]
 
         Lock.validate_promotion(current_lock_type, new_lock_type)
 
@@ -163,7 +158,7 @@ class LockManager:
         # Remove the current lock and grant the new promoted lock
         current_locks[current_lock_type].discard(transaction)
         current_locks[new_lock_type].add(transaction)
-        transaction.locks_held[node.name] = new_lock_type
+        transaction.locks_held[node] = new_lock_type
 
         node.change_lock(transaction, current_lock_type, new_lock_type)
 
