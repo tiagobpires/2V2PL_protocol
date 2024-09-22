@@ -32,48 +32,38 @@ def main():
     t1 = Transaction(lock_manager, await_graph)
     t2 = Transaction(lock_manager, await_graph)
 
-    lock_manager.request_lock(t1, tuple_node1, OperationType.WRITE)
-    lock_manager.request_lock(t2, tuple_node2, OperationType.WRITE)
-    lock_manager.request_lock(t1, tuple_node2, OperationType.WRITE)
-
-    await_graph.display_graph()
-    lock_manager.request_lock(t2, tuple_node1, OperationType.WRITE)
-
-    await_graph.display_graph()
-
-    return
-
-    # Deadlock Scenario:
     # Transaction 1 requests a Write Lock (WL) on Area1
     print(f"Transaction {t1.transaction_id} requests Write Lock on Area1")
     assert lock_manager.request_lock(t1, area_node, OperationType.WRITE) == True, "Transaction 1 should acquire Write Lock on Area1"
-
    
-    # Front propagation should automatically block Page1, Page2, Tuple1, and Tuple2
-    print("Verifying front propagation after Transaction 1 acquires Write Lock on Area1...")
-    assert LockType.WL in page_node1.locks and t1 in page_node1.locks[LockType.WL], "Page1 should be locked due to front propagation from Area1"
-    assert LockType.WL in tuple_node1.locks and t1 in tuple_node1.locks[LockType.WL], "Tuple1 should be locked due to front propagation from Area1"
-
-    # Transaction 2 tries to request a Write Lock (WL) on Page1 (should block due to Transaction 1's lock on Area1)
-    print(f"Transaction {t2.transaction_id} requests Write Lock on Page1 (should block)")
-    assert lock_manager.request_lock(t2, page_node1, OperationType.WRITE) == False, "Transaction 2 should be blocked due to Transaction 1 holding a Write Lock on Area1 (front propagated to Page1)"
-
-    # Transaction 2 requests a Write Lock (WL) on Tuple2 (should also block due to Transaction 1's lock on Area1)
-    print(f"Transaction {t2.transaction_id} requests Write Lock on Tuple2 (should block)")
-    assert lock_manager.request_lock(t2, tuple_node2, OperationType.WRITE) == False, "Transaction 2 should be blocked due to Transaction 1 holding a Write Lock on Area1 (front propagated to Tuple2)"
-
-    # Transaction 2 tries to request a Write Lock on Area1 (should block due to Transaction 1's lock)
+   
+    # Transaction 2 requests a Write Lock (WL) on Area1 (should block)
     print(f"Transaction {t2.transaction_id} requests Write Lock on Area1 (should block)")
     assert lock_manager.request_lock(t2, area_node, OperationType.WRITE) == False, "Transaction 2 should be blocked due to Transaction 1 holding a Write Lock on Area1"
-
+   
+    
+    # Transaction 2 tries to request a Write Lock (WL) on Page1
+    print(f"Transaction {t2.transaction_id} requests Write Lock on Page1 (should block due to Transaction 1's lock on Area1)")
+    assert lock_manager.request_lock(t2, page_node1, OperationType.WRITE) == False, "Transaction 2 should be blocked due to Transaction 1's lock on Area1"
+   
+    # Now, Transaction 1 requests a Write Lock on Page1 (should block due to Transaction 2)
+    print(f"Transaction {t1.transaction_id} requests Write Lock on Page1 (should block)")
+    assert lock_manager.request_lock(t1, page_node1, OperationType.WRITE) == False, "Transaction 1 should be blocked by Transaction 2 holding a lock on Page1"
+    await_graph.display_graph()
+    return
+  
+  
     # Detect deadlock in the system
-    print("Detecting deadlock...")
+    print("Detecting deadlock...p")
+    granularity_graph.print_graph()
     assert await_graph.detect_deadlock() == True, "Deadlock should be detected between Transaction 1 and Transaction 2"
-
+   
     print("Deadlock test passed.")
 
     # Optional: print the state of the graph
     granularity_graph.print_graph()
+
+
 
 if __name__ == "__main__":
     main()

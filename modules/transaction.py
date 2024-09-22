@@ -20,18 +20,18 @@ class Transaction:
         self.await_graph = await_graph
         time.sleep(0.1)
         self.timestamp = datetime.now()
-       
 
         await_graph.add_vertex(self)
-        
 
     def create_operation(self, operation_type: OperationType, resource: str):
         """
         Creates an operation and manages locking.
         """
+
         if self.state != "active":
             print(f"Transaction {self.transaction_id} cannot create operations in state {self.state}.")
             return False
+        
         operation = Operation(operation_type, resource)
         self.operations.append(operation)
 
@@ -73,6 +73,7 @@ class Transaction:
         # Release all locks held by the transaction
         self.lock_manager.release_all_locks(self)
         self._unblock_waiting_transactions()
+        del self.await_graph.vertices[self.transaction_id]
 
         print(f"Transaction {self.transaction_id} committed.")
 
@@ -84,7 +85,8 @@ class Transaction:
 
         # Release all locks held by the transaction
         self.lock_manager.release_all_locks(self)
-        self._unblock_waiting_transactions()
+        self._unblock_waiting_transactions()        
+        del self.await_graph.vertices[self.transaction_id]
 
         self.operations.clear()
 

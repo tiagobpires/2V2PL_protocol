@@ -43,11 +43,17 @@ class LockManager:
             return False
 
         lock_type = Lock.get_lock_type_based_on_operation(operation)
+        print(f"Transaction {transaction.transaction_id} requests {lock_type} on {node}.")
         current_locks = node.locks
 
+        # Check if transaction already has this type
+        if transaction in node.locks[lock_type]:
+            return True  
+       
         # Check if Certify Lock is already present
         if current_locks[LockType.CL]:
             blocking_transaction = list(current_locks[LockType.CL])[0]  # Certify lock held by another transaction
+
             self.await_graph.add_edge(transaction.transaction_id, blocking_transaction.transaction_id)
             transaction.block_transaction(node)
             self._deal_with_deadlock(transaction, blocking_transaction)
@@ -103,7 +109,7 @@ class LockManager:
             return list(current_locks[LockType.CL])[0]  # Certify Lock present, return the blocking transaction
 
         if lock_type == LockType.RL:
-            if not (
+            if not (    
                 current_locks[LockType.WL]
                 or current_locks[LockType.UL]
                 or current_locks[LockType.IUL]
@@ -140,6 +146,7 @@ class LockManager:
 
         for lock_type in lock_types:
             if current_locks[lock_type]:
+                print(f"teste>>>>>>>> {list(current_locks[lock_type])[0]}")
                 return list(current_locks[lock_type])[0]  # Return the first transaction holding the conflicting lock
 
         return None
@@ -151,7 +158,6 @@ class LockManager:
             most_recent_transaction = Transaction.get_most_recent_transaction(transaction, blocking_transaction)
 
             most_recent_transaction.abort_transaction()
-
 
     def release_lock(self, transaction, node: GranularityGraphNode, lock_type=None):
         """

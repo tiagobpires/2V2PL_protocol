@@ -111,6 +111,8 @@ class GranularityGraphNode:
             # Recursive call to propagate removal to all descendants
             self.front_remove_locks(transaction, child, lock_type)
 
+    def __repr__(self) -> str:
+        return f"GranularityGraphNode({self.name})"
 
 class GranularityGraph:
     def __init__(self):

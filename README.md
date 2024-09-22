@@ -25,10 +25,10 @@
 #### **4. Detecção e Prevenção de Deadlocks**
 
 - [x] Criar uma classe `Graph` com detecção de ciclos.
-- [ ] Implementar a detecção de deadlocks utilizando o **grafo de espera** (wait-for-graph) com a classe `Graph` já implementada.
-- [ ] Implementar a lógica de criação do grafo de espera à medida que os bloqueios são solicitados.
-- [ ] Integrar a detecção de ciclos no grafo de espera para identificar deadlocks.
-- [ ] Implementar uma estratégia de resolução de deadlock, abortando uma das transações envolvidas no ciclo.
+- [x] Implementar a detecção de deadlocks utilizando o **grafo de espera** (wait-for-graph) com a classe `Graph` já implementada.
+- [x] Implementar a lógica de criação do grafo de espera à medida que os bloqueios são solicitados.
+- [x] Integrar a detecção de ciclos no grafo de espera para identificar deadlocks.
+- [x] Implementar uma estratégia de resolução de deadlock, abortando uma das transações envolvidas no ciclo.
 
 #### **5. Sincronização das Operações**
 
