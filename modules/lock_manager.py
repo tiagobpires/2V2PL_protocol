@@ -1,15 +1,17 @@
 from modules.lock import LockType, Lock
 from modules.transaction import Transaction
 from modules.granularity_graph import GranularityGraph, GranularityGraphNode
-
+from modules.await_graph import Graph
 
 class LockManager:
-    def __init__(self, granularity_graph: GranularityGraph):
+    def __init__(self, granularity_graph: GranularityGraph, await_graph: Graph):
         """
         Initializes the lock manager to track locks on resources with multiple levels of granularity.
         """
 
         self.granularity_graph = granularity_graph
+        self.await_graph = await_graph
+        
 
     def _initialize_resource(self, resource: str):
         """
@@ -34,62 +36,72 @@ class LockManager:
         operation,
     ):
         """
-        Requests a lock for the resource.
+        Requests a lock for the resource and updates the wait-for graph if blocked.
         """
+
         if transaction.state == "blocked":
             return False
-        
+
         lock_type = Lock.get_lock_type_based_on_operation(operation)
         current_locks = node.locks
 
+        # Check if Certify Lock is already present
         if current_locks[LockType.CL]:
+            blocking_transaction = list(current_locks[LockType.CL])[0]  # Certify lock held by another transaction
+            self.await_graph.add_edge(transaction.transaction_id, blocking_transaction.transaction_id)
+            transaction.block_transaction(node)
+            self._deal_with_deadlock(transaction, blocking_transaction)
             return False
 
+        # If no locks are present, grant the lock
         if not any(current_locks.values()):
             current_locks[lock_type].add(transaction)
             transaction.locks_held[node] = lock_type
             node.add_lock(transaction, lock_type)
-
             return True
 
-        # Certify Lock (CL) só pode ser garantido se não houver outros bloqueios no recurso
+        # Certify Lock (CL) can only be granted if no other locks exist
         if lock_type == LockType.CL:
             if any(current_locks.values()):
-                return False  # Não pode adquirir CL se há qualquer outro bloqueio
+                blocking_transaction = self._get_first_blocking_transaction(current_locks)
+                self.await_graph.add_edge(transaction.transaction_id, blocking_transaction.transaction_id)
+                transaction.block_transaction(node)
+                self._deal_with_deadlock(transaction, blocking_transaction)
+                return False
 
             current_locks[LockType.CL].add(transaction)
             transaction.locks_held[node] = LockType.CL
             node.add_lock(transaction, lock_type)
-
             return True
 
         # Handle conflicting locks and intention locks
-        if lock_type in [
-            LockType.IRL,
-            LockType.IWL,
-            LockType.IUL,
-            LockType.RL,
-            LockType.WL,
-            LockType.UL,
-        ]:
-            if self._can_grant_lock(lock_type, current_locks):
-                current_locks[lock_type].add(transaction)
-                transaction.locks_held[node] = lock_type
-                node.add_lock(transaction, lock_type)
-                return True
-            
-            
-        #transaction.block_transaction(node) #bloquear se n puder adquirir o bloqueio
-        return False  # Failed to acquire the requested lock
+        blocking_transaction = self._can_grant_lock(lock_type, current_locks)
+        if blocking_transaction is True:
+            current_locks[lock_type].add(transaction)
+            transaction.locks_held[node] = lock_type
+            node.add_lock(transaction, lock_type)
+            return True
+        else:
+            # blocking_transaction contains the transaction that is holding a conflicting lock
+            self.await_graph.add_edge(transaction.transaction_id, blocking_transaction.transaction_id)
+            transaction.block_transaction(node)
+            self._deal_with_deadlock(transaction, blocking_transaction)
+            return False
 
     def _can_grant_lock(
         self,
-        lock_type: LockType,
+        lock_type,
         current_locks: dict,
     ):
         """
         Checks if the requested lock can be granted based on existing locks.
+        Returns True if the lock can be granted, otherwise returns the transaction holding the conflicting lock.
         """
+
+        # Certify Lock (CL) blocks all other locks
+        if current_locks[LockType.CL]:
+            return list(current_locks[LockType.CL])[0]  # Certify Lock present, return the blocking transaction
+
         if lock_type == LockType.RL:
             if not (
                 current_locks[LockType.WL]
@@ -97,18 +109,49 @@ class LockManager:
                 or current_locks[LockType.IUL]
                 or current_locks[LockType.IWL]
             ):
-                return True
+                return True  # Lock can be granted
+            # Return the blocking transaction
+            return self._get_first_blocking_transaction(current_locks, [LockType.WL, LockType.UL, LockType.IUL, LockType.IWL])
+
         elif lock_type == LockType.WL:
             if not any(current_locks.values()):  # No other locks allowed for WL
-                return True
+                return True  # Lock can be granted
+            # Return the blocking transaction
+            return self._get_first_blocking_transaction(current_locks)
+
         elif lock_type == LockType.UL:
             if not current_locks[LockType.WL] and not current_locks[LockType.UL]:
-                return True
+                return True  # Lock can be granted
+            # Return the blocking transaction
+            return self._get_first_blocking_transaction(current_locks, [LockType.WL, LockType.UL])
+
         elif lock_type in [LockType.IRL, LockType.IWL, LockType.IUL]:
             # Intention locks can be granted if no conflicting locks exist
-            return True
+            return True  # Intention locks are compatible with others
 
-        return False
+        return False  # Lock cannot be granted
+
+    def _get_first_blocking_transaction(self, current_locks, lock_types=None):
+        """
+        Finds and returns the first transaction holding a conflicting lock.
+        """
+        if lock_types is None:
+            lock_types = [LockType.WL, LockType.UL, LockType.RL, LockType.IWL, LockType.IUL, LockType.IRL]
+
+        for lock_type in lock_types:
+            if current_locks[lock_type]:
+                return list(current_locks[lock_type])[0]  # Return the first transaction holding the conflicting lock
+
+        return None
+
+    def _deal_with_deadlock(self, transaction: Transaction, blocking_transaction: Transaction):
+        if self.await_graph.detect_deadlock():
+            print("encontrei deadlock")
+            self.await_graph.display_graph()
+            most_recent_transaction = Transaction.get_most_recent_transaction(transaction, blocking_transaction)
+
+            most_recent_transaction.abort_transaction()
+
 
     def release_lock(self, transaction, node: GranularityGraphNode, lock_type=None):
         """

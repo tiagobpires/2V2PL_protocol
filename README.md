@@ -17,10 +17,10 @@
 
 #### **3. Protocolo 2V2PL**
 
-- [ ] Implementar o protocolo de bloqueio em duas fases:
+- [ X] Implementar o protocolo de bloqueio em duas fases:
   - Fase 1: Aquisição de todos os bloqueios (antes da execução das operações).
   - Fase 2: Liberação de todos os bloqueios (após a conclusão da transação).
-- [ ] Garantir que o protocolo siga a abordagem conservadora, evitando situações onde uma transação possa bloquear outra indefinidamente.
+- [X ] Garantir que o protocolo siga a abordagem conservadora, evitando situações onde uma transação possa bloquear outra indefinidamente.
 
 #### **4. Detecção e Prevenção de Deadlocks**
 

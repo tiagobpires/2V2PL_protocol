@@ -5,35 +5,38 @@ class Graph:
     def __init__(self):
         self.vertices = {}
 
-    def add_vertex(self, name):
+    def add_vertex(self, transaction):
         """
         Adds a vertex to the graph.
         """
 
-        self.vertices[name] = []
+        self.vertices[transaction.transaction_id] = {
+            "transaction": transaction,
+            "edges": []
+        }
 
     def add_edge(self, source, destination):
         """
         Adds a directed edge from source to destination.
         """
 
-        self.vertices[source].append(destination)
+        self.vertices[source]["edges"].append(destination)
 
     def remove_edge(self, source, destination):
         """
         Removes a directed edge from source to destination.
         """
 
-        self.vertices[source].remove(destination)
+        self.vertices[source]["edges"].remove(destination)
 
     def display_graph(self):
         """
         Prints the graph vertices and their edges.
         """
-
-        for vertex, neighbors in self.vertices.items():
+        for vertex, data in self.vertices.items():
+            neighbors = data["edges"]
             if neighbors:
-                neighbors_list = ", ".join(neighbors)
+                neighbors_list = ", ".join(map(str, neighbors))
                 print(f"Vertex {vertex} -> [{neighbors_list}]")
             else:
                 print(f"Vertex {vertex} has no edges.")
@@ -48,34 +51,52 @@ class Graph:
 
         return name in self.vertices
 
-    def has_cycle(self):
+    def detect_deadlock(self):
         """
-        Detects if there's a cycle in the graph using BFS for all vertices.
+        Detects if there's a cycle (deadlock) in the wait-for graph using DFS for all vertices.
         """
-
         visited = {v: False for v in self.vertices}  # Track visited nodes
-        parent = {v: None for v in self.vertices}  # Track parent nodes
+        rec_stack = {v: False for v in self.vertices}  # Track recursion stack
 
+        # Helper function for DFS
+        def dfs(v):
+            visited[v] = True
+            rec_stack[v] = True
+
+            # Recur for all neighbors
+            for neighbor in self.vertices[v]["edges"]:
+                if not visited[neighbor]:
+                    if dfs(neighbor):
+                        return True
+                elif rec_stack[neighbor]:
+                    # If the neighbor is in the recursion stack, we found a cycle (deadlock)
+                    return True
+
+            rec_stack[v] = False
+            return False
+
+        # Call DFS for each vertex
         for vertex in self.vertices:
             if not visited[vertex]:
-                q = SimpleQueue()
-                q.put(vertex)
-                visited[vertex] = True
-
-                while not q.empty():
-                    current = q.get()
-
-                    for neighbor in self.vertices[current]:
-                        if not visited[neighbor]:
-                            q.put(neighbor)
-                            visited[neighbor] = True
-                            parent[neighbor] = current
-
-                        elif parent[current] != neighbor:
-                            # A cycle is detected if a visited neighbor is not the parent of the current node
-                            return True
+                if dfs(vertex):
+                    return True
 
         return False
+   
+
+    def get_waiting_transactions(self, transaction_id):
+        """
+        Returns a list of transactions that are waiting for the given transaction_id.
+        """
+
+        waiting_transactions = []
+
+        for vertex, data in self.vertices.items():
+            if transaction_id in data["edges"]:
+                waiting_transactions.append((vertex, data))
+
+        return waiting_transactions
+    
 
 
 if __name__ == "__main__":
