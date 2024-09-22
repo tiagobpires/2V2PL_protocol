@@ -32,12 +32,10 @@ def main():
     t1 = Transaction(lock_manager, await_graph)
     t2 = Transaction(lock_manager, await_graph)
 
-    lock_manager.request_lock(t1, tuple_node1, OperationType.WRITE)
-    lock_manager.request_lock(t2, tuple_node2, OperationType.WRITE)
-    lock_manager.request_lock(t1, tuple_node2, OperationType.WRITE)
-
-    await_graph.display_graph()
-    lock_manager.request_lock(t2, tuple_node1, OperationType.WRITE)
+    t1.create_operation(tuple_node1, OperationType.WRITE)
+    t2.create_operation(tuple_node2, OperationType.WRITE)
+    t1.create_operation(tuple_node2, OperationType.WRITE)
+    t2.create_operation(tuple_node1, OperationType.WRITE)
 
     await_graph.display_graph()
 

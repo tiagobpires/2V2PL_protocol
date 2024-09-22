@@ -9,9 +9,9 @@ class OperationType(Enum):
 
 
 class Operation:
-    def __init__(self, operation_type: OperationType, resource: str):
+    def __init__(self, operation_type: OperationType, node: str):
         """
-        Initializes an operation with a type and the resource it operates on.
+        Initializes an operation with a type and the node it operates on.
         """
 
         if not isinstance(operation_type, OperationType):
@@ -20,10 +20,10 @@ class Operation:
             )
 
         self.operation_type = operation_type
-        self.resource = resource
+        self.node = node
 
     def __repr__(self):
-        return f"Operation({self.operation_type.value}, {self.resource})"
+        return f"Operation({self.operation_type.value}, {self.node})"
 
 
 if __name__ == "__main__":

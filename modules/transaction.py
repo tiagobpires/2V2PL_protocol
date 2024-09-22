@@ -1,5 +1,6 @@
 from modules.operation import Operation, OperationType
 from datetime import datetime
+from modules.granularity_graph import GranularityGraphNode
 import time
 
 class Transaction:
@@ -23,7 +24,7 @@ class Transaction:
 
         await_graph.add_vertex(self)
 
-    def create_operation(self, operation_type: OperationType, resource: str):
+    def create_operation(self, node: GranularityGraphNode, operation_type: OperationType):
         """
         Creates an operation and manages locking.
         """
@@ -32,20 +33,9 @@ class Transaction:
             print(f"Transaction {self.transaction_id} cannot create operations in state {self.state}.")
             return False
         
-        operation = Operation(operation_type, resource)
+        operation = Operation(operation_type, node)
         self.operations.append(operation)
-
-        if not self.lock_manager.request_lock(self, resource, operation_type):
-            self.block_transaction(resource)
-            print(
-                f"Transaction {self.transaction_id} is blocked, waiting for {resource}."
-            )
-            return False
-        else:
-            print(
-                f"Transaction {self.transaction_id} obtained {operation_type.name} lock on {resource}."
-            )
-            return True
+        self.lock_manager.request_lock(self, node, operation_type)
 
     def block_transaction(self, node):
         """
