@@ -11,26 +11,30 @@ class GranularityGraphNode:
 
     def add_lock(self, transaction, lock_type):
         """
-        Adds a lock to this node.
+        Adds a lock to this node and propagates the change.
         """
 
         self.locks[lock_type].add(transaction)
+        self.backpropagate_intention_locks(transaction, self.parent, lock_type)
+        self.front_propagate_locks(transaction, self, lock_type)
+
+    def change_lock(self, transaction, lock_type, new_lock_type):
+        """
+        Changes the lock type for a transaction in this node and propagates the change.
+        """
+
+        self.remove_lock(transaction, lock_type)
+        self.add_lock(transaction, new_lock_type)
 
     def remove_lock(self, transaction, lock_type):
         """
-        Removes a lock from this node.
+        Removes a lock from this node and propagates the removal.
         """
 
         self.locks[lock_type].discard(transaction)
 
-
-class GranularityGraph:
-    def __init__(self):
-        self.root = GranularityGraphNode("Database", is_root=True)
-
-    def add_node(self, parent, node):
-        parent.children.append(node)
-        node.parent = parent
+        self.remove_intention_locks(transaction, self.parent, lock_type)
+        self.front_remove_locks(transaction, self, lock_type)
 
     def backpropagate_intention_locks(self, transaction, node, lock_type):
         """
@@ -52,11 +56,10 @@ class GranularityGraph:
             return  # No backpropagation needed for this lock type
 
         if transaction not in node.locks[intention_lock]:
-            node.add_lock(transaction, intention_lock)
+            node.locks[intention_lock].add(transaction)
 
-        # Add the intention lock to the parent
+        # Add the intention lock to the parent if it's not the root
         if not node.is_root:
-            # Recursive call to propagate to higher levels
             self.backpropagate_intention_locks(transaction, node.parent, lock_type)
 
     def front_propagate_locks(self, transaction, node, lock_type):
@@ -65,14 +68,57 @@ class GranularityGraph:
         """
 
         for child in node.children:
+            if transaction not in child.locks[lock_type]:
+                child.locks[lock_type].add(transaction)
 
-            # If the lock type is RL/WL/CL, propagate RL/WL/CL to children
-            if lock_type in [LockType.RL, LockType.WL, LockType.CL, LockType.UL]:
-                if transaction not in child.locks[lock_type]:
-                    child.add_lock(transaction, lock_type)
+            # Recursive call to propagate to all descendants
+            self.front_propagate_locks(transaction, child, lock_type)
 
-                # Recursive call to propagate to all descendants
-                self.front_propagate_locks(transaction, child, lock_type)
+    def remove_intention_locks(self, transaction, node, lock_type):
+        """
+        Removes intention locks up the hierarchy if no more locks exist.
+        """
+
+        if node is None:
+            return
+
+        if lock_type == LockType.RL:
+            intention_lock = LockType.IRL
+        elif lock_type == LockType.WL:
+            intention_lock = LockType.IWL
+        elif lock_type == LockType.UL:
+            intention_lock = LockType.IUL
+        elif lock_type == LockType.CL:
+            intention_lock = LockType.ICL
+        else:
+            return
+
+        # Remove the intention lock if the transaction holds it
+        node.locks[intention_lock].discard(transaction)
+
+        # Always propagate intention removal upwards
+        if not node.is_root:
+            self.remove_intention_locks(transaction, node.parent, lock_type)
+
+    def front_remove_locks(self, transaction, node, lock_type):
+        """
+        Propagates lock removal down the hierarchy (to children).
+        """
+
+        for child in node.children:
+            child.locks[lock_type].discard(transaction)
+
+            # Recursive call to propagate removal to all descendants
+            self.front_remove_locks(transaction, child, lock_type)
+
+
+class GranularityGraph:
+    def __init__(self):
+        self.root = GranularityGraphNode("Database", is_root=True)
+
+    def add_node(self, parent, node):
+        parent.children.append(node)
+        node.parent = parent
 
     def print_graph(self, node=None, level=0):
         """

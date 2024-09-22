@@ -37,6 +37,7 @@ class LockManager:
         """
         Requests a lock for the resource.
         """
+
         lock_type = Lock.get_lock_type_based_on_operation(operation)
         self._initialize_resource(node.name)
         current_locks = self.locks[node.name]
@@ -46,13 +47,8 @@ class LockManager:
             transaction.locks_held[node.name] = lock_type
             node.add_lock(transaction, lock_type)
 
-            # Backpropagate intention locks using the granularity graph
-            self.granularity_graph.backpropagate_intention_locks(
-                transaction, node.parent, lock_type
-            )
-
-            # Front propagate the lock to children
-            self.granularity_graph.front_propagate_locks(transaction, node, lock_type)
+            for lock, transactions in current_locks.items():
+                print(lock, transactions)
 
             return True
 
@@ -64,14 +60,6 @@ class LockManager:
             current_locks[LockType.CL].add(transaction)
             transaction.locks_held[node.name] = LockType.CL
             node.add_lock(transaction, lock_type)
-
-            # Backpropagate intention certify locks
-            self.granularity_graph.backpropagate_intention_locks(
-                transaction, node.parent, lock_type
-            )
-
-            # Front propagate the lock to children
-            self.granularity_graph.front_propagate_locks(transaction, node, lock_type)
 
             return True
 
@@ -88,17 +76,6 @@ class LockManager:
                 current_locks[lock_type].add(transaction)
                 transaction.locks_held[node.name] = lock_type
                 node.add_lock(transaction, lock_type)
-
-                # Backpropagate intention locks using the granularity graph
-                self.granularity_graph.backpropagate_intention_locks(
-                    transaction, node.parent, lock_type
-                )
-
-                # Front propagate the lock to children
-                self.granularity_graph.front_propagate_locks(
-                    transaction, node, lock_type
-                )
-
                 return True
 
         return False  # Failed to acquire the requested lock
@@ -165,7 +142,7 @@ class LockManager:
         new_lock_type: LockType,
     ):
         """
-        Promotes the current lock held by the transaction to a more restrictive lock, including handling Intention Locks and Certify Lock.
+        Promotes the current lock held by the transaction to a more restrictive lock
         """
 
         self._initialize_resource(node.name)
@@ -187,6 +164,8 @@ class LockManager:
         current_locks[current_lock_type].discard(transaction)
         current_locks[new_lock_type].add(transaction)
         transaction.locks_held[node.name] = new_lock_type
+
+        node.change_lock(transaction, current_lock_type, new_lock_type)
 
         return True
 
