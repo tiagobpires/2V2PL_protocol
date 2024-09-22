@@ -1,6 +1,10 @@
 from modules.operation import Operation, OperationType
 
 
+
+
+
+
 class Transaction:
     transaction_counter = 0
 
@@ -16,12 +20,15 @@ class Transaction:
         self.operations = []
         self.lock_manager = lock_manager
         self.locks_held = {}
+        
 
     def create_operation(self, operation_type: OperationType, resource: str):
         """
         Creates an operation and manages locking.
         """
-
+        if self.state != "active":
+            print(f"Transaction {self.transaction_id} cannot create operations in state {self.state}.")
+            return False
         operation = Operation(operation_type, resource)
         self.operations.append(operation)
 

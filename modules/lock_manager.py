@@ -36,7 +36,9 @@ class LockManager:
         """
         Requests a lock for the resource.
         """
-
+        if transaction.state == "blocked":
+            return False
+        
         lock_type = Lock.get_lock_type_based_on_operation(operation)
         current_locks = node.locks
 
@@ -75,7 +77,9 @@ class LockManager:
                 transaction.locks_held[node] = lock_type
                 node.add_lock(transaction, lock_type)
                 return True
-
+            
+            
+        #transaction.block_transaction(node) #bloquear se n puder adquirir o bloqueio
         return False  # Failed to acquire the requested lock
 
     def _can_grant_lock(
