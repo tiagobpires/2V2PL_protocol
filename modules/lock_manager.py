@@ -40,6 +40,9 @@ class LockManager:
         lock_type = Lock.get_lock_type_based_on_operation(operation)
         current_locks = node.locks
 
+        if current_locks[LockType.CL]:
+            return False
+
         if not any(current_locks.values()):
             current_locks[lock_type].add(transaction)
             transaction.locks_held[node] = lock_type
