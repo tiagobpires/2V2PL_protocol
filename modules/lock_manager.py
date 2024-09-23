@@ -12,6 +12,7 @@ class LockManager:
 
         self.granularity_graph = granularity_graph
         self.await_graph = await_graph
+        self.operations_order = []
 
     def _initialize_resource(self, resource: str):
         """
@@ -279,6 +280,15 @@ class LockManager:
         node.change_lock(transaction, current_lock_type, new_lock_type)
 
         return True
+
+    def print_schedule_order(self):
+        for transaction, operation in self.operations_order:
+            if isinstance(operation, str):
+                print(f"Transaction {transaction.transaction_id} - {operation}")
+            else:
+                print(
+                    f"Transaction {transaction.transaction_id} - {operation.operation_type.value} - {operation.node.name}"
+                )
 
     def __repr__(self):
         return f"LockManager({self.locks})"

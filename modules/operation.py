@@ -2,10 +2,10 @@ from enum import Enum
 
 
 class OperationType(Enum):
-    READ = "R"
-    WRITE = "W"
-    UPDATE = "U"
-    COMMIT = "C"
+    READ = "Read"
+    WRITE = "Write"
+    UPDATE = "Update"
+    COMMIT = "Commit"
 
 
 class Operation:

@@ -33,15 +33,52 @@ def main():
     t1 = Transaction(lock_manager, await_graph)
     t2 = Transaction(lock_manager, await_graph)
 
-    t1.create_operation(tuple_node1, OperationType.WRITE)
-    t2.create_operation(tuple_node2, OperationType.WRITE)
-    t1.create_operation(tuple_node2, OperationType.WRITE)
-    t1.create_operation(page_node1, OperationType.READ)
-    t1.create_operation(page_node1, OperationType.WRITE)
-    t2.create_operation(tuple_node1, OperationType.WRITE)
+    # Define an input order for operations
+    input_operations = [
+        (t1, tuple_node1, OperationType.WRITE),
+        (t2, tuple_node2, OperationType.WRITE),
+        (t1, tuple_node2, OperationType.WRITE),
+        (t1, page_node1, OperationType.READ),
+        (t1, page_node1, OperationType.WRITE),
+        (t2, tuple_node1, OperationType.WRITE),
+    ]
 
+    print("\nInput order of operations:")
+    for t, node, op_type in input_operations:
+        print(f"Transaction {t.transaction_id}: {op_type.name} on {node.name}")
+
+    # Track the real order of execution, including aborts
+    executed_operations = []
+
+    print("\nStarting operations:")
+    for t, node, op_type in input_operations:
+        print(
+            f"Transaction {t.transaction_id} is attempting {op_type.name} on {node.name}"
+        )
+        t.create_operation(node, op_type)
+
+        if t.state == "active":  # Operation successfully executed
+            executed_operations.append((t, node, op_type, "executed"))
+        elif t.state == "aborted":  # Transaction was aborted
+            print(
+                f"Transaction {t.transaction_id} was aborted while trying {op_type.name} on {node.name}"
+            )
+            executed_operations.append((t, node, op_type, "aborted"))
+        else:
+            print(
+                f"Transaction {t.transaction_id} is blocked on {node.name} for {op_type.name}"
+            )
+            executed_operations.append((t, node, op_type, "blocked"))
+
+    # Print the real order of executed operations, including aborts
+    print("\nReal order of executed operations:")
+    lock_manager.print_schedule_order()
+
+    # Print the final state of the graph and locks
+    print("\nFinal state of the wait-for graph:")
     await_graph.display_graph()
 
+    print("\nFinal state of the granularity graph:")
     granularity_graph.print_graph()
 
 

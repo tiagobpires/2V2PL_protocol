@@ -65,6 +65,7 @@ class Transaction:
                             print(
                                 f"Transaction {self.transaction_id} successfully promoted lock on {operation.node} to {requested_lock_type}."
                             )
+                            self.lock_manager.operations_order.append((self, operation))
                             self.pending_operations.pop(
                                 0
                             )  # Remove the operation after success
@@ -78,6 +79,7 @@ class Transaction:
                         print(
                             f"Transaction {self.transaction_id} already holds the requested lock {current_lock_type} on {operation.node}."
                         )
+                        self.lock_manager.operations_order.append((self, operation))
                         self.pending_operations.pop(0)  # Remove the operation
                 else:
                     # If no lock is held, request the lock
@@ -88,6 +90,7 @@ class Transaction:
                         print(
                             f"Transaction {self.transaction_id} acquired lock {requested_lock_type} on {operation.node}."
                         )
+                        self.lock_manager.operations_order.append((self, operation))
                         self.pending_operations.pop(
                             0
                         )  # Remove the operation after success
@@ -119,12 +122,14 @@ class Transaction:
         self.state = "committed"
         self.lock_manager.release_all_locks(self)
         self.pending_operations.clear()
-        self._unblock_waiting_transactions()
+        waiting_transactions = self._unblock_waiting_transactions()
         del self.await_graph.vertices[self.transaction_id]
 
         print(f"Transaction {self.transaction_id} committed.")
 
-        # TODO
+        for _, data in waiting_transactions:
+            print(data["transaction"].transaction_id)
+            data["transaction"].execute_operations()
 
     def abort_transaction(self):
         """
@@ -134,6 +139,7 @@ class Transaction:
         self.lock_manager.release_all_locks(self)
         self.pending_operations.clear()
 
+        self.lock_manager.operations_order.append((self, "Aborted"))
         print(f"Transaction {self.transaction_id} aborted.")
 
         waiting_transactions = self._unblock_waiting_transactions()
