@@ -37,6 +37,22 @@ class Lock:
             raise ValueError("Invalid operation")
 
         return lock_type
+    
+    @staticmethod
+    def get_operation_based_on_lock_type(lock_type):
+        lock_type_to_operation = {
+            LockType.RL: OperationType.READ,
+            LockType.UL: OperationType.UPDATE,
+            LockType.WL: OperationType.WRITE,
+            LockType.CL: OperationType.COMMIT,
+        }
+
+        operation = lock_type_to_operation.get(lock_type)
+
+        if operation is None:
+            raise ValueError("Invalid lock type")
+
+        return operation
 
     @staticmethod
     def validate_promotion(current_lock_type: LockType, new_lock_type: LockType):

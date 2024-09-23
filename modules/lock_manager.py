@@ -77,16 +77,24 @@ class LockManager:
 
         # Certify Lock (CL) can only be granted if no other locks exist
         if lock_type == LockType.CL:
-            if any(current_locks.values()):
+            has_block = False
+                        
+            for locks in current_locks.values():
+                if len(list(locks)) > 0:
+                    has_block = True
+            
+            if has_block:
                 blocking_transaction = self._get_first_blocking_transaction(
                     current_locks
                 )
-
+                
                 if not self.await_graph.add_edge(
                     transaction.transaction_id, blocking_transaction.transaction_id
                 ):
                     return False
-
+                                
+                # self.await_graph.display_graph()
+                
                 transaction.block_transaction(node)
                 self._deal_with_deadlock(transaction, blocking_transaction)
                 return False
@@ -225,7 +233,7 @@ class LockManager:
         """
         Releases a specific lock type or all locks held by the transaction on the node.
         """
-
+        
         if node in transaction.locks_held:
             current_locks = node.locks
             if lock_type:
@@ -267,15 +275,21 @@ class LockManager:
         current_lock_type = transaction.locks_held[node]
 
         Lock.validate_promotion(current_lock_type, new_lock_type)
+        
+        node.remove_lock(transaction, current_lock_type)
+        new_operation = Lock.get_operation_based_on_lock_type(new_lock_type)
+        self.request_lock(transaction, node, new_operation)
 
-        if not Lock.check_conflicting_locks(
-            current_locks, current_lock_type, new_lock_type
-        ):
-            return False  # Cannot promote due to conflicting locks
+        # if not Lock.check_conflicting_locks(
+        #     current_locks, current_lock_type, new_lock_type
+        # ):
+        #     return False  # Cannot promote due to conflicting locks
+        
+        # print(">..")
 
-        # Remove the current lock and grant the new promoted lock
-        current_locks[current_lock_type].discard(transaction)
-        current_locks[new_lock_type].add(transaction)
+        # # Remove the current lock and grant the new promoted lock
+        # current_locks[current_lock_type].discard(transaction)
+        # current_locks[new_lock_type].add(transaction)
         transaction.locks_held[node] = new_lock_type
 
         node.change_lock(transaction, current_lock_type, new_lock_type)

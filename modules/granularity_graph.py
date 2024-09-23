@@ -30,7 +30,7 @@ class GranularityGraphNode:
         """
         Removes a lock from this node and propagates the removal.
         """
-
+        
         self.locks[lock_type].discard(transaction)
 
         self.remove_intention_locks(transaction, self.parent, lock_type)

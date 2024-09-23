@@ -20,6 +20,7 @@ def main():
     page_node2 = GranularityGraphNode("Page2")
     tuple_node1 = GranularityGraphNode("Tuple1")
     tuple_node2 = GranularityGraphNode("Tuple2")
+    tuple_node3=GranularityGraphNode("Tuple3")
 
     # Add nodes to the graph to build the hierarchy
     granularity_graph.add_node(database_node, area_node)
@@ -28,21 +29,26 @@ def main():
     granularity_graph.add_node(table_node, page_node2)
     granularity_graph.add_node(page_node1, tuple_node1)
     granularity_graph.add_node(page_node2, tuple_node2)
+    granularity_graph.add_node(page_node1,tuple_node3)
 
     # Create transactions
     t1 = Transaction(lock_manager, await_graph)
     t2 = Transaction(lock_manager, await_graph)
+    t3 = Transaction(lock_manager, await_graph)
 
     # Define an input order for operations
     input_operations = [
+        (t1, tuple_node1, OperationType.READ),
+        (t2, tuple_node1, OperationType.READ),
         (t1, tuple_node1, OperationType.WRITE),
-        (t2, tuple_node2, OperationType.WRITE),
-        (t1, tuple_node2, OperationType.WRITE),
-        (t1, page_node1, OperationType.READ),
-        (t1, page_node1, OperationType.WRITE),
-        (t2, tuple_node1, OperationType.WRITE),
-        (t2, None, OperationType.COMMIT),
+        (t1, tuple_node3, OperationType.READ),
         (t1, None, OperationType.COMMIT),
+        (t2, tuple_node2, OperationType.WRITE),
+        (t3, tuple_node2, OperationType.READ),
+        (t2, None, OperationType.COMMIT),
+        (t3, tuple_node3, OperationType.WRITE),
+        # (t1, tuple_node1, OperationType.READ),
+        (t3, None, OperationType.COMMIT),
     ]
 
     print("\nInput order of operations:")
@@ -55,6 +61,8 @@ def main():
     print("\nStarting operations:")
     for t, node, op_type in input_operations:
         t.create_operation(node, op_type)
+    
+ 
 
     # Print the real order of executed operations, including aborts
     print("\nSchedule of operations:")
@@ -64,8 +72,8 @@ def main():
     print("\nFinal state of the wait-for graph:")
     await_graph.display_graph()
 
-    print("\nFinal state of the granularity graph:")
-    granularity_graph.print_graph()
+    # print("\nFinal state of the granularity graph:")
+    # granularity_graph.print_graph()
 
 
 if __name__ == "__main__":

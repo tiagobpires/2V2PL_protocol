@@ -45,8 +45,12 @@ class Transaction:
                 # Try to execute the first pending operation
                 operation = self.pending_operations[0]
                 if operation.operation_type == OperationType.COMMIT:
+                    
+                    self.await_graph.display_graph()
+                    
                     self.convert_write_locks_to_cl()
-                    self.commit_transaction()
+                    if self.state != "blocked":
+                        self.commit_transaction()
                     continue
 
                 requested_lock_type = Lock.get_lock_type_based_on_operation(
@@ -140,11 +144,16 @@ class Transaction:
         """
         Commits the transaction, releases all locks, and clears pending operations.
         """
+        if self.state in ["aborted", "blocked"]:
+            return 
+        
         self.state = "committed"
         self.lock_manager.release_all_locks(self)
         self.pending_operations.clear()
         waiting_transactions = self._unblock_waiting_transactions()
-        del self.await_graph.vertices[self.transaction_id]
+        
+        if self.await_graph.vertices.get(self.transaction_id):
+            del self.await_graph.vertices[self.transaction_id]
         self.lock_manager.operations_order.append((self, "Commited"))
 
         print(f"Transaction {self.transaction_id} committed.")
@@ -156,6 +165,9 @@ class Transaction:
         """
         Aborts the transaction, clears all locks, and resets its state.
         """
+        if self.state == "aborted":
+            return 
+        
         self.state = "aborted"
         self.lock_manager.release_all_locks(self)
         self.pending_operations.clear()
