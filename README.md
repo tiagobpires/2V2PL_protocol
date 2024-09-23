@@ -32,11 +32,11 @@
 
 #### **5. Sincronização das Operações**
 
-- [ ] Desenvolver uma função para reordenar as operações no escalonamento, respeitando as restrições de bloqueio e as fases do protocolo 2V2PL.
-- [ ] Garantir que a sincronização entre as transações respeite os bloqueios adquiridos e liberados corretamente.
+- [x] Desenvolver uma função para reordenar as operações no escalonamento, respeitando as restrições de bloqueio e as fases do protocolo 2V2PL.
+- [x] Garantir que a sincronização entre as transações respeite os bloqueios adquiridos e liberados corretamente.
 
 #### **6. Entrada e Saída**
 
-- [ ] Definir o formato de entrada para o escalonamento (conjunto de transações e suas operações).
-- [ ] Implementar a lógica para processar a entrada, interpretar transações e suas operações.
-- [ ] Definir a estrutura de saída que mostre a execução correta do escalonamento e o status das transações (com sucesso ou abortada).
+- [x] Definir o formato de entrada para o escalonamento (conjunto de transações e suas operações).
+- [x] Implementar a lógica para processar a entrada, interpretar transações e suas operações.
+- [x] Definir a estrutura de saída que mostre a execução correta do escalonamento e o status das transações (com sucesso ou abortada).
