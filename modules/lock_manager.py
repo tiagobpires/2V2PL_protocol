@@ -212,8 +212,9 @@ class LockManager:
         self, transaction: Transaction, blocking_transaction: Transaction
     ):
         if self.await_graph.detect_deadlock():
-            print("encontrei deadlock")
+            print("Deadlock found:\n")
             self.await_graph.display_graph()
+            print()
             most_recent_transaction = Transaction.get_most_recent_transaction(
                 transaction, blocking_transaction
             )

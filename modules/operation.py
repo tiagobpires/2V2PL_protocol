@@ -9,7 +9,7 @@ class OperationType(Enum):
 
 
 class Operation:
-    def __init__(self, operation_type: OperationType, node: str):
+    def __init__(self, operation_type: OperationType, node):
         """
         Initializes an operation with a type and the node it operates on.
         """

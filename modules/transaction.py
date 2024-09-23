@@ -44,6 +44,10 @@ class Transaction:
             if self.state == "active":
                 # Try to execute the first pending operation
                 operation = self.pending_operations[0]
+                if operation.operation_type == OperationType.COMMIT:
+                    self.commit_transaction()
+                    continue
+
                 requested_lock_type = Lock.get_lock_type_based_on_operation(
                     operation.operation_type
                 )
@@ -124,11 +128,11 @@ class Transaction:
         self.pending_operations.clear()
         waiting_transactions = self._unblock_waiting_transactions()
         del self.await_graph.vertices[self.transaction_id]
+        self.lock_manager.operations_order.append((self, "Commited"))
 
         print(f"Transaction {self.transaction_id} committed.")
 
         for _, data in waiting_transactions:
-            print(data["transaction"].transaction_id)
             data["transaction"].execute_operations()
 
     def abort_transaction(self):
@@ -146,7 +150,6 @@ class Transaction:
         del self.await_graph.vertices[self.transaction_id]
 
         for _, data in waiting_transactions:
-            print(data["transaction"].transaction_id)
             data["transaction"].execute_operations()
 
     def _unblock_waiting_transactions(self):
