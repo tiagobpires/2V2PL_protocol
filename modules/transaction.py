@@ -2,7 +2,7 @@ from modules.operation import Operation, OperationType
 from datetime import datetime
 from modules.granularity_graph import GranularityGraphNode
 import time
-from modules.lock import Lock
+from modules.lock import Lock, LockType
 
 
 class Transaction:
@@ -45,6 +45,7 @@ class Transaction:
                 # Try to execute the first pending operation
                 operation = self.pending_operations[0]
                 if operation.operation_type == OperationType.COMMIT:
+                    self.convert_write_locks_to_cl()
                     self.commit_transaction()
                     continue
 
@@ -102,6 +103,22 @@ class Transaction:
                         break  # Stop if the lock cannot be acquired
             else:
                 break  # Is not active
+
+    def convert_write_locks_to_cl(self):
+        """
+        Converts all WRITE locks held by the transaction to Certify Locks (CL) before commit.
+        """
+
+        # self.lock_manager.granularity_graph.print_graph()
+
+        for node, lock_type in list(self.locks_held.items()):
+            if lock_type == LockType.WL:  # Convert WRITE locks to CL
+                print(
+                    f"Transaction {self.transaction_id} is converting WRITE lock on {node.name} to CL."
+                )
+                self.lock_manager.promote_lock(self, node, LockType.CL)
+
+        # self.lock_manager.granularity_graph.print_graph()
 
     def block_transaction(self, node):
         """
