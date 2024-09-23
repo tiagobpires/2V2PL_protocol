@@ -109,32 +109,60 @@ class LockManager:
             return list(current_locks[LockType.CL])[0]  # Certify Lock present, return the blocking transaction
 
         if lock_type == LockType.RL:
-            if not (    
-                current_locks[LockType.WL]
+            if (
+                current_locks[LockType.CL]
                 or current_locks[LockType.UL]
                 or current_locks[LockType.IUL]
-                or current_locks[LockType.IWL]
+                or current_locks[LockType.ICL]
             ):
-                return True  # Lock can be granted
-            # Return the blocking transaction
-            return self._get_first_blocking_transaction(current_locks, [LockType.WL, LockType.UL, LockType.IUL, LockType.IWL])
+                return self._get_first_blocking_transaction(current_locks, [LockType.WL, LockType.UL, LockType.IUL, LockType.IWL])
 
-        elif lock_type == LockType.WL:
-            if not any(current_locks.values()):  # No other locks allowed for WL
-                return True  # Lock can be granted
-            # Return the blocking transaction
-            return self._get_first_blocking_transaction(current_locks)
+            return True  # Lock can be granted
 
-        elif lock_type == LockType.UL:
-            if not current_locks[LockType.WL] and not current_locks[LockType.UL]:
-                return True  # Lock can be granted
-            # Return the blocking transaction
-            return self._get_first_blocking_transaction(current_locks, [LockType.WL, LockType.UL])
+        elif lock_type in [LockType.WL, LockType.UL]:
+            if (
+                current_locks[LockType.WL]
+                or current_locks[LockType.CL]
+                or current_locks[LockType.UL]
+                or current_locks[LockType.IWL]
+                or current_locks[LockType.IUL]
+                or current_locks[LockType.ICL]
+            ):
+                return self._get_first_blocking_transaction(current_locks)
 
-        elif lock_type in [LockType.IRL, LockType.IWL, LockType.IUL]:
-            # Intention locks can be granted if no conflicting locks exist
-            return True  # Intention locks are compatible with others
+            return True  # Lock can be granted
 
+        elif lock_type == LockType.IRL:
+            if (
+                current_locks[LockType.CL]
+                or current_locks[LockType.UL]
+            ):
+                return self._get_first_blocking_transaction(current_locks)
+
+            return True  # Lock can be granted
+        
+        elif lock_type in [LockType.IWL, LockType.IUL]:
+            if (
+                current_locks[LockType.WL]
+                or current_locks[LockType.CL]
+                or current_locks[LockType.UL]
+            ):
+                return self._get_first_blocking_transaction(current_locks)
+
+            return True  # Lock can be granted
+            
+        
+        elif lock_type == LockType.ICL:
+            if (
+                current_locks[LockType.WL]
+                or current_locks[LockType.RL]
+                or current_locks[LockType.CL]
+                or current_locks[LockType.UL]
+            ):
+                return self._get_first_blocking_transaction(current_locks)
+
+            return True  # Lock can be granted
+            
         return False  # Lock cannot be granted
 
     def _get_first_blocking_transaction(self, current_locks, lock_types=None):
@@ -146,7 +174,6 @@ class LockManager:
 
         for lock_type in lock_types:
             if current_locks[lock_type]:
-                print(f"teste>>>>>>>> {list(current_locks[lock_type])[0]}")
                 return list(current_locks[lock_type])[0]  # Return the first transaction holding the conflicting lock
 
         return None

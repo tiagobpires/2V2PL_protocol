@@ -28,6 +28,7 @@ class Lock:
             OperationType.READ: LockType.RL,
             OperationType.UPDATE: LockType.UL,
             OperationType.WRITE: LockType.WL,
+            # OperationType.COMMIT: LockType.CL,
         }
 
         lock_type = operation_to_lock_type.get(operation)

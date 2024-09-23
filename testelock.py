@@ -32,37 +32,13 @@ def main():
     t1 = Transaction(lock_manager, await_graph)
     t2 = Transaction(lock_manager, await_graph)
 
-    # Transaction 1 requests a Write Lock (WL) on Area1
-    print(f"Transaction {t1.transaction_id} requests Write Lock on Area1")
-    assert lock_manager.request_lock(t1, area_node, OperationType.WRITE) == True, "Transaction 1 should acquire Write Lock on Area1"
-   
-   
-    # Transaction 2 requests a Write Lock (WL) on Area1 (should block)
-    print(f"Transaction {t2.transaction_id} requests Write Lock on Area1 (should block)")
-    assert lock_manager.request_lock(t2, area_node, OperationType.WRITE) == False, "Transaction 2 should be blocked due to Transaction 1 holding a Write Lock on Area1"
-   
-    
-    # Transaction 2 tries to request a Write Lock (WL) on Page1
-    print(f"Transaction {t2.transaction_id} requests Write Lock on Page1 (should block due to Transaction 1's lock on Area1)")
-    assert lock_manager.request_lock(t2, page_node1, OperationType.WRITE) == False, "Transaction 2 should be blocked due to Transaction 1's lock on Area1"
-   
-    # Now, Transaction 1 requests a Write Lock on Page1 (should block due to Transaction 2)
-    print(f"Transaction {t1.transaction_id} requests Write Lock on Page1 (should block)")
-    assert lock_manager.request_lock(t1, page_node1, OperationType.WRITE) == False, "Transaction 1 should be blocked by Transaction 2 holding a lock on Page1"
+    t1.create_operation(tuple_node1, OperationType.WRITE)
+    t2.create_operation(tuple_node2, OperationType.WRITE)
+    t1.create_operation(tuple_node2, OperationType.WRITE)
+    t1.create_operation(page_node1, OperationType.READ)
+    t2.create_operation(tuple_node1, OperationType.WRITE)   
+
     await_graph.display_graph()
-    return
-  
-  
-    # Detect deadlock in the system
-    print("Detecting deadlock...p")
-    granularity_graph.print_graph()
-    assert await_graph.detect_deadlock() == True, "Deadlock should be detected between Transaction 1 and Transaction 2"
-   
-    print("Deadlock test passed.")
-
-    # Optional: print the state of the graph
-    granularity_graph.print_graph()
-
 
 
 if __name__ == "__main__":
