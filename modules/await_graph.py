@@ -12,7 +12,7 @@ class Graph:
 
         self.vertices[transaction.transaction_id] = {
             "transaction": transaction,
-            "edges": []
+            "edges": [],
         }
 
     def add_edge(self, source, destination):
@@ -20,7 +20,11 @@ class Graph:
         Adds a directed edge from source to destination.
         """
 
+        if source == destination:
+            return False
+
         self.vertices[source]["edges"].append(destination)
+        return True
 
     def remove_edge(self, source, destination):
         """
@@ -82,7 +86,6 @@ class Graph:
                     return True
 
         return False
-   
 
     def get_waiting_transactions(self, transaction_id):
         """
@@ -96,7 +99,6 @@ class Graph:
                 waiting_transactions.append((vertex, data))
 
         return waiting_transactions
-    
 
 
 if __name__ == "__main__":

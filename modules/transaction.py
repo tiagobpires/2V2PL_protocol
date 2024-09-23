@@ -2,6 +2,8 @@ from modules.operation import Operation, OperationType
 from datetime import datetime
 from modules.granularity_graph import GranularityGraphNode
 import time
+from modules.lock import Lock
+
 
 class Transaction:
     transaction_counter = 1
@@ -24,7 +26,9 @@ class Transaction:
 
         await_graph.add_vertex(self)
 
-    def create_operation(self, node: GranularityGraphNode, operation_type: OperationType):
+    def create_operation(
+        self, node: GranularityGraphNode, operation_type: OperationType
+    ):
         """
         Adds an operation to the pending_operations and executes it if possible.
         """
@@ -40,18 +44,57 @@ class Transaction:
             if self.state == "active":
                 # Try to execute the first pending operation
                 operation = self.pending_operations[0]
+                requested_lock_type = Lock.get_lock_type_based_on_operation(
+                    operation.operation_type
+                )
 
-                # Try to request lock and execute operation
-                success = self.lock_manager.request_lock(self, operation.node, operation.operation_type)
+                # Check if the transaction already holds any lock on the node
+                if operation.node in self.locks_held:
+                    current_lock_type = self.locks_held[operation.node]
 
-                if success:
-                    print(f"Transaction {self.transaction_id} executed operation {operation.operation_type} on {operation.node}.")
-                    self.pending_operations.pop(0)
+                    # If the current lock is not the requested one, promote it
+                    if current_lock_type != requested_lock_type:
+                        print(
+                            f"Transaction {self.transaction_id} is promoting lock from {current_lock_type} to {requested_lock_type} on {operation.node}."
+                        )
+                        success = self.lock_manager.promote_lock(
+                            self, operation.node, requested_lock_type
+                        )
+
+                        if success:
+                            print(
+                                f"Transaction {self.transaction_id} successfully promoted lock on {operation.node} to {requested_lock_type}."
+                            )
+                            self.pending_operations.pop(
+                                0
+                            )  # Remove the operation after success
+                        else:
+                            print(
+                                f"Transaction {self.transaction_id} failed to promote lock on {operation.node}."
+                            )
+                            break  # Stop if promotion fails
+                    else:
+                        # If the lock is the same as requested, no need to promote
+                        print(
+                            f"Transaction {self.transaction_id} already holds the requested lock {current_lock_type} on {operation.node}."
+                        )
+                        self.pending_operations.pop(0)  # Remove the operation
                 else:
-                    break 
+                    # If no lock is held, request the lock
+                    success = self.lock_manager.request_lock(
+                        self, operation.node, operation.operation_type
+                    )
+                    if success:
+                        print(
+                            f"Transaction {self.transaction_id} acquired lock {requested_lock_type} on {operation.node}."
+                        )
+                        self.pending_operations.pop(
+                            0
+                        )  # Remove the operation after success
+                    else:
+                        break  # Stop if the lock cannot be acquired
             else:
-                print(f"Transaction {self.transaction_id} is blocked and cannot execute operations.")
-                break
+                break  # Is not active
 
     def block_transaction(self, node):
         """
@@ -81,7 +124,7 @@ class Transaction:
 
         print(f"Transaction {self.transaction_id} committed.")
 
-        #TODO
+        # TODO
 
     def abort_transaction(self):
         """
@@ -90,23 +133,29 @@ class Transaction:
         self.state = "aborted"
         self.lock_manager.release_all_locks(self)
         self.pending_operations.clear()
-        waiting_transactions = self._unblock_waiting_transactions()
-        del self.await_graph.vertices[self.transaction_id]
 
         print(f"Transaction {self.transaction_id} aborted.")
 
+        waiting_transactions = self._unblock_waiting_transactions()
+        del self.await_graph.vertices[self.transaction_id]
+
         for _, data in waiting_transactions:
+            print(data["transaction"].transaction_id)
             data["transaction"].execute_operations()
 
     def _unblock_waiting_transactions(self):
         """
         Unblock transactions waiting for current transaction
         """
-        waiting_transactions = self.await_graph.get_waiting_transactions(self.transaction_id)
-        
+        waiting_transactions = self.await_graph.get_waiting_transactions(
+            self.transaction_id
+        )
+
         for vertex, data in waiting_transactions:
             waiting_transaction = data["transaction"]
-            self.await_graph.remove_edge(vertex, self.transaction_id)  # Remove edge from wait-for graph
+            self.await_graph.remove_edge(
+                vertex, self.transaction_id
+            )  # Remove edge from wait-for graph
 
             waiting_transaction.unblock_transaction()  # Unblocks the waiting transaction
 

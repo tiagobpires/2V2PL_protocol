@@ -3,6 +3,7 @@ from modules.transaction import Transaction
 from modules.granularity_graph import GranularityGraph, GranularityGraphNode
 from modules.await_graph import Graph
 
+
 class LockManager:
     def __init__(self, granularity_graph: GranularityGraph, await_graph: Graph):
         """
@@ -11,7 +12,6 @@ class LockManager:
 
         self.granularity_graph = granularity_graph
         self.await_graph = await_graph
-        
 
     def _initialize_resource(self, resource: str):
         """
@@ -43,18 +43,26 @@ class LockManager:
             return False
 
         lock_type = Lock.get_lock_type_based_on_operation(operation)
-        print(f"Transaction {transaction.transaction_id} requests {lock_type} on {node}.")
+        print(
+            f"Transaction {transaction.transaction_id} requests {lock_type} on {node}."
+        )
         current_locks = node.locks
 
         # Check if transaction already has this type
         if transaction in node.locks[lock_type]:
-            return True  
-       
+            return True
+
         # Check if Certify Lock is already present
         if current_locks[LockType.CL]:
-            blocking_transaction = list(current_locks[LockType.CL])[0]  # Certify lock held by another transaction
+            blocking_transaction = list(current_locks[LockType.CL])[
+                0
+            ]  # Certify lock held by another transaction
 
-            self.await_graph.add_edge(transaction.transaction_id, blocking_transaction.transaction_id)
+            if not self.await_graph.add_edge(
+                transaction.transaction_id, blocking_transaction.transaction_id
+            ):
+                return False
+
             transaction.block_transaction(node)
             self._deal_with_deadlock(transaction, blocking_transaction)
             return False
@@ -69,8 +77,15 @@ class LockManager:
         # Certify Lock (CL) can only be granted if no other locks exist
         if lock_type == LockType.CL:
             if any(current_locks.values()):
-                blocking_transaction = self._get_first_blocking_transaction(current_locks)
-                self.await_graph.add_edge(transaction.transaction_id, blocking_transaction.transaction_id)
+                blocking_transaction = self._get_first_blocking_transaction(
+                    current_locks
+                )
+
+                if not self.await_graph.add_edge(
+                    transaction.transaction_id, blocking_transaction.transaction_id
+                ):
+                    return False
+
                 transaction.block_transaction(node)
                 self._deal_with_deadlock(transaction, blocking_transaction)
                 return False
@@ -89,7 +104,11 @@ class LockManager:
             return True
         else:
             # blocking_transaction contains the transaction that is holding a conflicting lock
-            self.await_graph.add_edge(transaction.transaction_id, blocking_transaction.transaction_id)
+            if not self.await_graph.add_edge(
+                transaction.transaction_id, blocking_transaction.transaction_id
+            ):
+                return False
+
             transaction.block_transaction(node)
             self._deal_with_deadlock(transaction, blocking_transaction)
             return False
@@ -106,7 +125,9 @@ class LockManager:
 
         # Certify Lock (CL) blocks all other locks
         if current_locks[LockType.CL]:
-            return list(current_locks[LockType.CL])[0]  # Certify Lock present, return the blocking transaction
+            return list(current_locks[LockType.CL])[
+                0
+            ]  # Certify Lock present, return the blocking transaction
 
         if lock_type == LockType.RL:
             if (
@@ -115,7 +136,10 @@ class LockManager:
                 or current_locks[LockType.IUL]
                 or current_locks[LockType.ICL]
             ):
-                return self._get_first_blocking_transaction(current_locks, [LockType.WL, LockType.UL, LockType.IUL, LockType.IWL])
+                return self._get_first_blocking_transaction(
+                    current_locks,
+                    [LockType.WL, LockType.UL, LockType.IUL, LockType.IWL],
+                )
 
             return True  # Lock can be granted
 
@@ -133,14 +157,11 @@ class LockManager:
             return True  # Lock can be granted
 
         elif lock_type == LockType.IRL:
-            if (
-                current_locks[LockType.CL]
-                or current_locks[LockType.UL]
-            ):
+            if current_locks[LockType.CL] or current_locks[LockType.UL]:
                 return self._get_first_blocking_transaction(current_locks)
 
             return True  # Lock can be granted
-        
+
         elif lock_type in [LockType.IWL, LockType.IUL]:
             if (
                 current_locks[LockType.WL]
@@ -150,8 +171,7 @@ class LockManager:
                 return self._get_first_blocking_transaction(current_locks)
 
             return True  # Lock can be granted
-            
-        
+
         elif lock_type == LockType.ICL:
             if (
                 current_locks[LockType.WL]
@@ -162,7 +182,7 @@ class LockManager:
                 return self._get_first_blocking_transaction(current_locks)
 
             return True  # Lock can be granted
-            
+
         return False  # Lock cannot be granted
 
     def _get_first_blocking_transaction(self, current_locks, lock_types=None):
@@ -170,19 +190,32 @@ class LockManager:
         Finds and returns the first transaction holding a conflicting lock.
         """
         if lock_types is None:
-            lock_types = [LockType.WL, LockType.UL, LockType.RL, LockType.IWL, LockType.IUL, LockType.IRL]
+            lock_types = [
+                LockType.WL,
+                LockType.UL,
+                LockType.RL,
+                LockType.IWL,
+                LockType.IUL,
+                LockType.IRL,
+            ]
 
         for lock_type in lock_types:
             if current_locks[lock_type]:
-                return list(current_locks[lock_type])[0]  # Return the first transaction holding the conflicting lock
+                return list(current_locks[lock_type])[
+                    0
+                ]  # Return the first transaction holding the conflicting lock
 
         return None
 
-    def _deal_with_deadlock(self, transaction: Transaction, blocking_transaction: Transaction):
+    def _deal_with_deadlock(
+        self, transaction: Transaction, blocking_transaction: Transaction
+    ):
         if self.await_graph.detect_deadlock():
             print("encontrei deadlock")
             self.await_graph.display_graph()
-            most_recent_transaction = Transaction.get_most_recent_transaction(transaction, blocking_transaction)
+            most_recent_transaction = Transaction.get_most_recent_transaction(
+                transaction, blocking_transaction
+            )
 
             most_recent_transaction.abort_transaction()
 

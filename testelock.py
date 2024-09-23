@@ -5,6 +5,7 @@ from modules.transaction import Transaction
 from modules.operation import OperationType
 from modules.await_graph import Graph
 
+
 def main():
     # Initialize the granularity graph and lock manager
     granularity_graph = GranularityGraph()
@@ -36,9 +37,12 @@ def main():
     t2.create_operation(tuple_node2, OperationType.WRITE)
     t1.create_operation(tuple_node2, OperationType.WRITE)
     t1.create_operation(page_node1, OperationType.READ)
-    t2.create_operation(tuple_node1, OperationType.WRITE)   
+    t1.create_operation(page_node1, OperationType.WRITE)
+    t2.create_operation(tuple_node1, OperationType.WRITE)
 
     await_graph.display_graph()
+
+    granularity_graph.print_graph()
 
 
 if __name__ == "__main__":
